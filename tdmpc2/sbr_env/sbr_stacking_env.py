@@ -1,5 +1,6 @@
 # Code to create environment for SBR_Stacking task. 
 # dm_control: stack_3_blocks -> Environment that inherits from gym.Env for StableBaselines3
+# May have to change code to create environment with scaled rewards (current rewards are too small for proper gradient updates)
 import os
 os.environ['MUJOCO_GL'] = 'egl'
 os.environ['DISPLAY'] = ':0'

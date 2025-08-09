@@ -1,0 +1,26 @@
+# Custom stacking task config for TD-MPC2
+defaults:
+  - base_task
+
+# Task identification
+domain: stacking
+task: stack-3-bricks
+obs: state
+
+# Environment settings  
+episode_length: 1500
+action_repeat: 1
+
+# Task-specific settings
+success_threshold: 0.5
+termination_threshold: 0.8
+
+# Evaluation
+eval_episodes: 5
+
+# Logging and monitoring
+wandb_project: TD-MPC2-SBR
+wandb_entity: hiroki-kimiwada-
+wandb_silent: false
+enable_wandb: true
+save_csv: true
