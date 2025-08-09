@@ -88,5 +88,9 @@ def make_env(cfg):
 		cfg.obs_shape = {cfg.get('obs', 'state'): env.observation_space.shape}
 	cfg.action_dim = env.action_space.shape[0]
 	cfg.episode_length = env.max_episode_steps
-	cfg.seed_steps = max(1000, 5*cfg.episode_length)
+	# Handle episode_length as string or int
+	episode_length = cfg.episode_length
+	if isinstance(episode_length, str):
+		episode_length = int(episode_length.replace('_', ''))
+	cfg.seed_steps = max(1000, 5*episode_length)
 	return env

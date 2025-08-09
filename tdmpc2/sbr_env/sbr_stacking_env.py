@@ -1,15 +1,37 @@
 # Code to create environment for SBR_Stacking task. 
 # dm_control: stack_3_blocks -> Environment that inherits from gym.Env for StableBaselines3
 # May have to change code to create environment with scaled rewards (current rewards are too small for proper gradient updates)
+# sbr_env/sbr_stacking_env.py - Fixed version with proper imports
 import os
-os.environ['MUJOCO_GL'] = 'egl'
-os.environ['DISPLAY'] = ':0'
+import sys
+import warnings
+
+# Set environment variables before any mujoco imports
+os.environ['MUJOCO_GL'] = os.getenv('MUJOCO_GL', 'egl')
+if 'DISPLAY' not in os.environ:
+    os.environ['DISPLAY'] = ':99'
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
 
 import gymnasium as gym
 from gymnasium import spaces
-from dm_control import manipulation
 import numpy as np
 from typing import Dict, Any, Tuple, Optional
+
+# Import dm_control with error handling
+try:
+    from dm_control import manipulation
+    print("✅ dm_control.manipulation imported successfully")
+except ImportError as e:
+    print(f"❌ Could not import dm_control.manipulation: {e}")
+    print("   Please install with: pip install dm_control[manipulation]")
+    raise
+except Exception as e:
+    print(f"❌ Error importing dm_control: {e}")
+    print("   This might be due to missing dependencies or display issues")
+    raise
+
 
 class SimpleStackingEnv(gym.Env):
     """
@@ -24,28 +46,48 @@ class SimpleStackingEnv(gym.Env):
         self.max_episode_steps = max_episode_steps
         self._episode_step = 0
         
-        # Load dm_control environment
+        print(f"🧱 Creating {task_variant} environment...")
+        
+        # Load dm_control environment with error handling
         try:
-            env_name = f"{task_variant}_features"
-            self.env = manipulation.load(env_name)
-            print(f"✅ Loaded: {env_name}")
-        except:
-            self.env = manipulation.load(task_variant)
-            print(f"✅ Loaded: {task_variant}")
+            # Try different task name formats
+            possible_names = [
+                f"{task_variant}_features",
+                task_variant,
+                task_variant.replace('_', '-'),
+                f"{task_variant.replace('_', '-')}_features"
+            ]
+            
+            self.env = None
+            for name in possible_names:
+                try:
+                    self.env = manipulation.load(name)
+                    print(f"✅ Loaded: {name}")
+                    break
+                except Exception as e:
+                    print(f"⚠️  Failed to load {name}: {str(e)[:50]}...")
+                    continue
+            
+            if self.env is None:
+                raise ValueError(f"Could not load any variant of {task_variant}")
+                
+        except Exception as e:
+            print(f"❌ Failed to create dm_control environment: {e}")
+            raise
         
         # IMPORTANT: Override dm_control's episode length
         # Set a very high internal limit so we control episode termination
         if hasattr(self.env, '_time_limit'):
-            self.env._time_limit = max_episode_steps * 2  # Set much higher than our limit
+            self.env._time_limit = max_episode_steps * 10  # Set much higher than our limit
             print(f"🔧 Override dm_control time limit to {self.env._time_limit}")
         
         # Try to access and modify the task's time limit if possible
         try:
             if hasattr(self.env, '_task') and hasattr(self.env._task, '_time_limit'):
-                self.env._task._time_limit = max_episode_steps * 2
+                self.env._task._time_limit = max_episode_steps * 10
                 print(f"🔧 Override task time limit to {self.env._task._time_limit}")
-        except:
-            print("⚠️  Could not access task time limit directly")
+        except Exception as e:
+            print(f"⚠️  Could not access task time limit: {e}")
         
         # Set up spaces
         self._setup_spaces()
@@ -55,29 +97,34 @@ class SimpleStackingEnv(gym.Env):
     
     def _setup_spaces(self):
         """Setup action and observation spaces"""
-        # Action space
-        action_spec = self.env.action_spec()
-        self.action_space = spaces.Box(
-            low=action_spec.minimum.astype(np.float32),
-            high=action_spec.maximum.astype(np.float32),
-            shape=action_spec.shape,
-            dtype=np.float32
-        )
-        
-        # Get sample observation to calculate flattened size
-        temp_time_step = self.env.reset()
-        flat_obs = self._flatten_observation(temp_time_step.observation)
-        
-        # Create flattened observation space
-        self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=flat_obs.shape,
-            dtype=np.float32
-        )
-        
-        print(f"🔧 Action space: {self.action_space.shape}")
-        print(f"🔧 Observation space: {self.observation_space.shape}")
+        try:
+            # Action space
+            action_spec = self.env.action_spec()
+            self.action_space = spaces.Box(
+                low=action_spec.minimum.astype(np.float32),
+                high=action_spec.maximum.astype(np.float32),
+                shape=action_spec.shape,
+                dtype=np.float32
+            )
+            
+            # Get sample observation to calculate flattened size
+            temp_time_step = self.env.reset()
+            flat_obs = self._flatten_observation(temp_time_step.observation)
+            
+            # Create flattened observation space
+            self.observation_space = spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=flat_obs.shape,
+                dtype=np.float32
+            )
+            
+            print(f"🔧 Action space: {self.action_space.shape}")
+            print(f"🔧 Observation space: {self.observation_space.shape}")
+            
+        except Exception as e:
+            print(f"❌ Error setting up spaces: {e}")
+            raise
     
     def _flatten_observation(self, dm_obs: Dict) -> np.ndarray:
         """Flatten dm_control observation dict into single array"""
@@ -144,8 +191,8 @@ class SimpleStackingEnv(gym.Env):
             'max_steps': self.max_episode_steps
         }
         
-        # Debug info every 100 steps
-        if self._episode_step % 100 == 0:
+        # Debug info every 200 steps
+        if self._episode_step % 200 == 0:
             print(f"Step {self._episode_step}/{self.max_episode_steps}: reward={reward:.3f}, success={success}")
         
         return obs, reward, terminated, truncated, info
@@ -154,48 +201,57 @@ class SimpleStackingEnv(gym.Env):
         """Render environment"""
         try:
             return self.env.physics.render(height=480, width=640, camera_id=0)
-        except:
+        except Exception as e:
+            print(f"Warning: Could not render: {e}")
             return None
     
     def close(self):
         """Close environment"""
-        pass
+        if hasattr(self.env, 'close'):
+            self.env.close()
 
 
-# Simple factory function
 def make_simple_env(task_variant='stack_3_bricks', max_episode_steps=1500):
     """Create simple stacking environment with proper episode length"""
+    print(f"🏭 Creating simple stacking environment: {task_variant}")
     return SimpleStackingEnv(task_variant=task_variant, max_episode_steps=max_episode_steps)
 
 
-# Test the fixed environment
-if __name__ == "__main__":
-    print("🧪 Testing Fixed Long Episode Environment")
+def test_environment():
+    """Test the environment creation and basic functionality"""
+    print("🧪 Testing Stacking Environment")
     print("=" * 50)
     
-    # Create environment with long episodes
-    env = make_simple_env(max_episode_steps=1500)
-    
-    # Test full episode
-    obs, info = env.reset()
-    print(f"Reset: obs shape = {obs.shape}, max_steps = {info['max_steps']}")
-    
-    # Run for many steps to test episode length
-    total_reward = 0
-    for step in range(100):  # Test first 100 steps
-        action = env.action_space.sample() * 0.1  # Small actions
-        obs, reward, terminated, truncated, info = env.step(action)
-        total_reward += reward
+    try:
+        # Test environment creation
+        env = make_simple_env('stack_3_bricks', max_episode_steps=100)
+        print("✅ Environment created successfully")
         
-        if step % 25 == 0:
-            print(f"Step {step}: reward={reward:.3f}, terminated={terminated}, truncated={truncated}")
+        # Test reset
+        obs, info = env.reset()
+        print(f"✅ Reset successful: obs shape = {obs.shape}")
         
-        if terminated or truncated:
-            print(f"Episode ended at step {info['episode_step']}")
-            break
-    
-    print(f"Total reward after {step+1} steps: {total_reward:.3f}")
-    print(f"Episode should continue until step {env.max_episode_steps}")
-    
-    env.close()
-    print("✅ Fixed environment test completed!")
+        # Test a few steps
+        for i in range(5):
+            action = env.action_space.sample() * 0.1  # Small random actions
+            obs, reward, terminated, truncated, info = env.step(action)
+            print(f"Step {i+1}: reward = {reward:.4f}, terminated = {terminated}, truncated = {truncated}")
+            
+            if terminated or truncated:
+                break
+        
+        env.close()
+        print("✅ Environment test completed successfully!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Environment test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+# Test the environment if run directly
+if __name__ == "__main__":
+    success = test_environment()
+    sys.exit(0 if success else 1)
