@@ -58,7 +58,7 @@ compile: true
 save_video: true
 save_agent: true
 seed: 1
-episode_length: 1500
+episode_length: 1200
 seed_steps: 6000
 action_dim: 9
 work_dir: ???
