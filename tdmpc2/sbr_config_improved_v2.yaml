@@ -1,0 +1,100 @@
+# Not as effective as sbr_config_improved.yaml
+# sbr_config_improved.yaml - Optimized TD-MPC2 config for stacking tasks 
+defaults:
+    - override hydra/launcher: submitit_local
+
+# environment - STACKING TASK
+task: stack-3-bricks
+obs: state
+episodic: false
+
+# evaluation
+checkpoint: ???
+eval_episodes: 5
+eval_freq: 10000  # More frequent evaluation
+
+# training - OPTIMIZED FOR MANIPULATION TASKS
+steps: 500000
+batch_size: 128  # Smaller for better gradients
+reward_coef: 0.2  # Higher reward coefficient
+value_coef: 0.1
+termination_coef: 1
+consistency_coef: 30  # Higher consistency for model learning
+rho: 0.8  # Higher temporal weighting
+lr: 1e-4  # Lower learning rate for stability
+enc_lr_scale: 0.3
+grad_clip_norm: 20
+tau: 0.01
+discount_denom: 5
+discount_min: 0.98  # Higher discount for long-horizon tasks
+discount_max: 0.995
+buffer_size: 1000000
+exp_name: improved_stacking
+data_dir: ???
+
+# planning - OPTIMIZED FOR MANIPULATION
+mpc: true
+iterations: 6
+num_samples: 1024  # More samples for better planning
+num_elites: 128  # More elites
+num_pi_trajs: 32  # More policy trajectories
+horizon: 7  # Longer horizon for manipulation
+min_std: 0.1  # Higher min std for exploration
+max_std: 1.5  # Lower max std for stability
+temperature: 0.3  # Lower temperature for focused planning
+
+# actor
+log_std_min: -10
+log_std_max: 2
+entropy_coef: 5e-4  # Higher entropy for exploration
+
+# critic
+num_bins: 101
+vmin: -10
+vmax: +10
+
+# architecture
+model_size: 5
+num_enc_layers: 2
+enc_dim: 256
+num_channels: 32
+mlp_dim: 512
+latent_dim: 512
+task_dim: 96
+num_q: 5
+dropout: 0.01
+simnorm_dim: 8
+
+# logging
+wandb_project: V2-TD-MPC2-Stacking-Optimized
+wandb_entity: hiroki-kimiwada-
+wandb_silent: false
+enable_wandb: true
+save_csv: true
+
+# misc
+compile: false  # Disable for debugging initially
+save_video: true
+save_agent: true
+seed: 42  # Different seed to avoid local minima
+
+# ENVIRONMENT SETTINGS - OPTIMIZED
+episode_length: 1200  # Shorter episodes for faster learning
+seed_steps: 6000  # Proportionally adjusted
+action_dim: 9
+
+# Additional hyperparameters for manipulation
+max_episode_steps: 1200
+success_threshold: 0.7  # Higher threshold for cleaner success signal
+reward_scale: 50.0  # Scale up small dm_control rewards
+
+# convenience (auto-computed)
+work_dir: ???
+task_title: ???
+multitask: ???
+tasks: ???
+obs_shape: ???
+obs_shapes: ???
+action_dims: ???
+episode_lengths: ???
+bin_size: ???

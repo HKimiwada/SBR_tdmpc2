@@ -1,59 +1,45 @@
-# Config for dog-run task in TD-MPC2
+# Basic Version of TD-MPC2 Config for Stacking Tasks
 defaults:
-    - override hydra/launcher: submitit_local
-
-# environment
-task: dog-run
+- override hydra/launcher: submitit_local
+task: stack-3-bricks
 obs: state
 episodic: false
-
-# evaluation
 checkpoint: ???
-eval_episodes: 10
-eval_freq: 50000
-
-# training
-steps: 10_000_000
-batch_size: 256
+eval_episodes: 5
+eval_freq: 10000
+steps: 500000
+batch_size: 128
 reward_coef: 0.1
 value_coef: 0.1
 termination_coef: 1
-consistency_coef: 20
-rho: 0.5
-lr: 3e-4
+consistency_coef: 30
+rho: 0.8
+lr: 0.0001
 enc_lr_scale: 0.3
 grad_clip_norm: 20
 tau: 0.01
 discount_denom: 5
 discount_min: 0.95
 discount_max: 0.995
-buffer_size: 1_000_000
+buffer_size: 1000000
 exp_name: default
 data_dir: ???
-
-# planning
 mpc: true
 iterations: 6
-num_samples: 512
-num_elites: 64
+num_samples: 1024
+num_elites: 128
 num_pi_trajs: 24
-horizon: 3
-min_std: 0.05
-max_std: 2
-temperature: 0.5
-
-# actor
+horizon: 7
+min_std: 0.1
+max_std: 1.5
+temperature: 0.3
 log_std_min: -10
 log_std_max: 2
-entropy_coef: 1e-4
-
-# critic
+entropy_coef: 0.0005
 num_bins: 101
 vmin: -10
-vmax: +10
-
-# architecture
-model_size: ???
+vmax: 10
+model_size: 5
 num_enc_layers: 2
 enc_dim: 256
 num_channels: 32
@@ -63,30 +49,24 @@ task_dim: 96
 num_q: 5
 dropout: 0.01
 simnorm_dim: 8
-
-# logging
-wandb_project: TD-MPC2-Test
+wandb_project: TD-MPC2-Stacking
 wandb_entity: hiroki-kimiwada-
 wandb_silent: false
 enable_wandb: true
 save_csv: true
-
-# misc
 compile: true
 save_video: true
 save_agent: true
 seed: 1
-
-# convenience
+episode_length: 1200
+seed_steps: 7500
+action_dim: 9
 work_dir: ???
 task_title: ???
 multitask: ???
 tasks: ???
 obs_shape: ???
-action_dim: ???
-episode_length: ???
 obs_shapes: ???
 action_dims: ???
 episode_lengths: ???
-seed_steps: ???
 bin_size: ???
