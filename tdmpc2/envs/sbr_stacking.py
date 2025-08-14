@@ -125,33 +125,43 @@ class StackingTensorWrapper(gym.Wrapper):
 
 def make_env(cfg):
     """
-    Make custom stacking environment for TD-MPC2.
+    Make custom stacking environment for TD-MPC2 with reward scaling.
     """
     if not cfg.task.startswith('stack-'):
-        raise ValueError(f'Unknown task: {cfg.task}. Expected task starting with "stack-"')
+        raise ValueError(f'Unknown task: {cfg.task}')
     
-    assert cfg.obs == 'state', f'Stacking environment only supports state observations, got: {cfg.obs}'
+    assert cfg.obs == 'state', 'Stacking environment only supports state observations'
     
-    # Extract task variant from cfg.task
-    # e.g., 'stack-3-bricks' -> 'stack_3_bricks'
+    # Extract task variant
     task_variant = cfg.task.replace('-', '_')
     
     print(f"🧱 Creating stacking environment: {task_variant}")
     
     try:
-        # Create the base environment with proper episode length
-        max_episode_steps = getattr(cfg, 'episode_length', 1500)
-        env = make_simple_env(task_variant=task_variant, max_episode_steps=max_episode_steps)
+        # Get configuration parameters
+        max_episode_steps = getattr(cfg, 'episode_length', 500)
+        reward_scale = getattr(cfg, 'reward_scale', 10.0)  # Default scale of 10
+        
+        # Import the scaled environment
+        from sbr_stacking_env import make_scaled_env
+        
+        # Create the scaled environment
+        env = make_scaled_env(
+            task_variant=task_variant,
+            max_episode_steps=max_episode_steps,
+            reward_scale=reward_scale
+        )
         
         # Wrap with TD-MPC2 compatible tensor wrapper
         env = StackingTensorWrapper(env)
         
-        # Set max episode steps (TD-MPC2 expects this attribute)
+        # Set max episode steps
         env.max_episode_steps = max_episode_steps
         
         print(f"✅ Stacking environment created successfully")
         print(f"   Task variant: {task_variant}")
         print(f"   Max episode steps: {max_episode_steps}")
+        print(f"   Reward scale: {reward_scale}")
         print(f"   Observation space: {env.observation_space.shape}")
         print(f"   Action space: {env.action_space.shape}")
         
@@ -162,7 +172,6 @@ def make_env(cfg):
         import traceback
         traceback.print_exc()
         raise
-
 
 def test_make_env():
     """Test the make_env function"""

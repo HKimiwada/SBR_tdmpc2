@@ -216,6 +216,56 @@ def make_simple_env(task_variant='stack_3_bricks', max_episode_steps=1500):
     print(f"🏭 Creating simple stacking environment: {task_variant}")
     return SimpleStackingEnv(task_variant=task_variant, max_episode_steps=max_episode_steps)
 
+# Add this to sbr_env/sbr_stacking_env.py after the SimpleStackingEnv class
+
+class RewardScaledStackingEnv(SimpleStackingEnv):
+    """
+    Wrapper that scales rewards for better learning with TD-MPC2
+    """
+    
+    def __init__(self, task_variant='stack_3_bricks', max_episode_steps=500, reward_scale=10.0):
+        super().__init__(task_variant, max_episode_steps)
+        self.reward_scale = reward_scale
+        self.episode_rewards = []
+        
+    def reset(self, seed=None, options=None):
+        obs, info = super().reset(seed, options)
+        self.episode_rewards = []
+        return obs, info
+    
+    def step(self, action):
+        obs, reward, terminated, truncated, info = super().step(action)
+        
+        # Scale the reward
+        scaled_reward = reward * self.reward_scale
+        
+        # Add reward shaping for intermediate progress
+        # Bonus for any positive reward (indicates progress)
+        if reward > 0.1:
+            scaled_reward += 0.5  # Small bonus for making progress
+        
+        # Track for logging
+        self.episode_rewards.append(reward)
+        
+        # Add shaped success metric
+        info['raw_reward'] = reward
+        info['scaled_reward'] = scaled_reward
+        info['episode_return'] = sum(self.episode_rewards)
+        
+        # Update success metric to be more granular
+        if reward > 0.7:
+            info['success'] = 1.0
+        elif reward > 0.5:
+            info['success'] = 0.5  # Partial success
+        else:
+            info['success'] = 0.0
+        
+        return obs, scaled_reward, terminated, truncated, info
+
+
+def make_scaled_env(task_variant='stack_3_bricks', max_episode_steps=500, reward_scale=10.0):
+    """Create reward-scaled stacking environment"""
+    return RewardScaledStackingEnv(task_variant, max_episode_steps, reward_scale)
 
 def test_environment():
     """Test the environment creation and basic functionality"""

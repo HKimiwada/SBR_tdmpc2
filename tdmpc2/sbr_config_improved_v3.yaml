@@ -1,44 +1,58 @@
-# Basic Version of TD-MPC2 Config for Stacking Tasks
+# sbr_config_improved_v3.yaml - Optimized TD-MPC2 config for stacking tasks
 defaults:
 - override hydra/launcher: submitit_local
+
+# Environment
 task: stack-3-bricks
 obs: state
 episodic: false
+
+# Evaluation
 checkpoint: ???
-eval_episodes: 5
-eval_freq: 10000
-steps: 500000
-batch_size: 128
-reward_coef: 0.1
-value_coef: 0.1
+eval_episodes: 10  # More episodes for reliable evaluation
+eval_freq: 5000    # More frequent evaluation to track progress
+
+# Training - CRITICAL CHANGES FOR STACKING
+steps: 1000000     # More steps for complex manipulation
+batch_size: 256    # Larger batch for stability
+reward_coef: 0.5   # INCREASED for stronger reward signal
+value_coef: 0.2    # Increased for better value learning
 termination_coef: 1
-consistency_coef: 30
-rho: 0.8
-lr: 0.0001
+consistency_coef: 10  # REDUCED from 30 - was too high
+rho: 0.5           # Lower for shorter-term focus
+lr: 3e-4           # INCREASED from 1e-4 - was too low
 enc_lr_scale: 0.3
 grad_clip_norm: 20
 tau: 0.01
 discount_denom: 5
-discount_min: 0.98
-discount_max: 0.995
+discount_min: 0.95   # Lower discount for manipulation
+discount_max: 0.99
 buffer_size: 1000000
-exp_name: default
+exp_name: v3_optimized
 data_dir: ???
+
+# Planning - CRITICAL FOR MANIPULATION
 mpc: true
-iterations: 6
-num_samples: 1024
-num_elites: 128
-num_pi_trajs: 24
-horizon: 7
-min_std: 0.1
-max_std: 1.5
-temperature: 0.3
+iterations: 8        # More iterations for better planning
+num_samples: 512     # Balanced sampling
+num_elites: 64       # Reasonable elite set
+num_pi_trajs: 32     # More policy guidance
+horizon: 3           # SHORTER horizon for manipulation
+min_std: 0.02        # MUCH LOWER for precise control
+max_std: 0.5         # REDUCED for stability
+temperature: 0.5     # Higher temp for exploration
+
+# Actor
 log_std_min: -10
 log_std_max: 2
-entropy_coef: 0.0005
+entropy_coef: 1e-3   # Higher for exploration
+
+# Critic
 num_bins: 101
 vmin: -10
 vmax: 10
+
+# Architecture
 model_size: 5
 num_enc_layers: 2
 enc_dim: 256
@@ -49,18 +63,26 @@ task_dim: 96
 num_q: 5
 dropout: 0.01
 simnorm_dim: 8
-wandb_project: V3-TD-MPC2-Stacking-Optimized
+
+# Logging
+wandb_project: V3-TD-MPC2-Stacking
 wandb_entity: hiroki-kimiwada-
 wandb_silent: false
 enable_wandb: true
 save_csv: true
-compile: true
+
+# Misc
+compile: false    # Start without compile for debugging
 save_video: true
 save_agent: true
-seed: 1
-episode_length: 1200
-seed_steps: 6000
+seed: 42
+
+# Environment settings
+episode_length: 500   # MUCH SHORTER for faster learning
+seed_steps: 10000    # More exploration data
 action_dim: 9
+
+# Auto-computed
 work_dir: ???
 task_title: ???
 multitask: ???
