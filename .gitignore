@@ -2,7 +2,8 @@
 tdmpc2/logs/
 tdmpc2/outputs/
 tdmpc2/wandb/
-
+tdmpc2/data/
+data
 # HPC
 nautilus/*.yaml
 *.key

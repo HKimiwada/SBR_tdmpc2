@@ -1,0 +1,3 @@
+- task=pick-cube
+- checkpoint=/home/hiroki_kimiwada/weights/pick-cube-1.pt
+- save_video=false
